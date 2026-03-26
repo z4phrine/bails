@@ -1,7 +1,7 @@
 {
   "name": "@z4phcode/z4ph.core",
   "version": "8.0.8",
-  "description": "z4ph.core \u2014 Modified Baileys WhatsApp Web Engine \u00b7 2025",
+  "description": "z4ph.core — Modified Baileys WhatsApp Web Engine · 2025",
   "keywords": [
     "whatsapp",
     "websocket",
@@ -40,7 +40,6 @@
     "@cacheable/node-cache": "*",
     "gradient-string": "2.0.2",
     "@z4phcode/libsignal": "*",
-    "moment-timezone": "*",
     "music-metadata": "*",
     "cache-manager": "*",
     "async-mutex": "*",
@@ -48,20 +47,17 @@
     "pbjs": "^0.0.14",
     "protobufjs": "*",
     "lru-cache": "*",
-    "readline": "*",
     "p-queue": "*",
     "lodash": "*",
     "figlet": "*",
     "axios": "*",
-    "path": "*",
     "pino": "*",
     "ws": "*",
-    "fs": "*",
-    "os": "*"
+    "chalk": "*",
+    "long": "*"
   },
   "devDependencies": {
     "conventional-changelog-cli": "*",
-    "linkPreview-js": "*",
     "protobufjs-cli": "*",
     "cache-manager": "*",
     "@types/jest": "*",
@@ -71,12 +67,13 @@
     "eslint": "*",
     "jest": "*",
     "json": "*",
-    "open": "*"
+    "open": "*",
+    "link-preview-js": "*"
   },
   "peerDependencies": {
-    "linkPreview-js": "*",
     "audio-decode": "*",
-    "jimp": ">=0.16.0"
+    "jimp": ">=0.16.0",
+    "link-preview-js": "*"
   },
   "peerDependenciesMeta": {
     "audio-decode": {
@@ -88,7 +85,7 @@
     "jimp": {
       "optional": true
     },
-    "linkPreview-js": {
+    "link-preview-js": {
       "optional": true
     }
   },
