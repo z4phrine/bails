@@ -1,6 +1,6 @@
 {
   "name": "@bianoffc/baileys",
-  "version": "8.0.9",
+  "version": "8.0.8",
   "private": true,
   "description": "WhatsApp Web API Library for Node.js — distributed via GitHub only",
   "license": "MIT",
@@ -77,24 +77,14 @@
     "sharp": "^0.34.1"
   },
   "peerDependenciesMeta": {
-    "audio-decode": {
-      "optional": true
-    },
-    "jimp": {
-      "optional": true
-    },
-    "link-preview-js": {
-      "optional": true
-    },
-    "qrcode-terminal": {
-      "optional": true
-    },
-    "sharp": {
-      "optional": true
-    }
+    "audio-decode": { "optional": true },
+    "jimp": { "optional": true },
+    "link-preview-js": { "optional": true },
+    "qrcode-terminal": { "optional": true },
+    "sharp": { "optional": true }
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "packageManager": "yarn@1.22.19"
 }
