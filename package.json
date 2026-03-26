@@ -38,7 +38,6 @@
   "dependencies": {
     "@whiskeysockets/eslint-config": "github:whiskeysockets/eslint-config",
     "@cacheable/node-cache": "*",
-    "gradient-string": "2.0.2",
     "@z4phcode/libsignal": "*",
     "music-metadata": "*",
     "cache-manager": "*",
@@ -49,11 +48,9 @@
     "lru-cache": "*",
     "p-queue": "*",
     "lodash": "*",
-    "figlet": "*",
     "axios": "*",
     "pino": "*",
     "ws": "*",
-    "chalk": "*",
     "long": "*"
   },
   "devDependencies": {
@@ -98,5 +95,16 @@
   },
   "bugs": {
     "url": "https://github.com/bianoffc/z4ph.core/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./proto": {
+      "import": "./proto/index.js",
+      "default": "./proto/index.js"
+    }
   }
 }
