@@ -41,19 +41,12 @@ A professionally enhanced, feature-rich version of the Baileys WhatsApp Web API.
 <h2 align="center">✨ Features</h2>
 
 - 🚀 **Modern & Fast** – Built with TypeScript and latest technologies
-- 
 - 🔧 **Enhanced Stability** – Improved connection handling and error recovery
-- 
 - 📱 **Multi-Device Support** – Full support for WhatsApp's multi-device protocol
-- 
 - 🔐 **End-to-End Encryption** – Secure communication using Signal Protocol
-- 
 - 📨 **All Message Types** – Support for text, media, documents, contacts, locations, polls, and more
-- 
 - 👥 **Advanced Group Management** – Comprehensive group controls and utilities, including group status support
-- 
 - 💾 **Flexible Authentication** – Multiple auth state storage options
-- 
 - 🛠️ **Developer Friendly** – Clean API, extensive examples, and detailed documentation
 
 ---
