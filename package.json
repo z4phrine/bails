@@ -1,6 +1,6 @@
 {
   "name": "@bianoffc/baileys",
-  "version": "8.0.10",
+  "version": "8.0.11",
   "private": true,
   "description": "WhatsApp Web API Library for Node.js — distributed via GitHub only",
   "license": "MIT",
