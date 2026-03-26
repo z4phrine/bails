@@ -1,7 +1,7 @@
 //=======================================================//
 import { getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from "../wabinary/index.js";
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from "../defaults/index.js";
-import { createReadStream, createWriteStream, promises as fs, WriteStream } from "fs";
+import { createReadStream, createWriteStream, promises as fs } from "fs";
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from "./crypto.js";
 import { generateMessageIDV2 } from "./generics.js";
 import { proto } from "../../proto/index.js";
@@ -13,7 +13,22 @@ import { once } from "events";
 import { tmpdir } from "os";
 import { join } from "path";
 import { URL } from "url";
-import Jimp from "jimp";
+//=======================================================//
+// Jimp — optional peer dependency, imported lazily so it doesn't
+// crash if the user hasn't installed it.
+let _Jimp = null;
+const getJimp = async () => {
+  if (_Jimp) return _Jimp;
+  try {
+    const mod = await import("jimp");
+    _Jimp = mod.default ?? mod.Jimp ?? mod;
+  } catch {
+    throw new Error(
+      "[z4ph.core] jimp is required for image processing. Run: npm install jimp@^0.22.12"
+    );
+  }
+  return _Jimp;
+};
 //=======================================================//
 const getTmpFilesDirectory = () => tmpdir();
 //=======================================================//
@@ -42,28 +57,17 @@ export const getRawMediaUploadData = async (media, mediaType, logger) => {
     stream.destroy();
     const fileSha256 = hasher.digest();
     logger?.debug("hashed data for raw upload");
-    return {
-      filePath: filePath,
-      fileSha256,
-      fileLength
-    };
-  }
-  catch (error) {
+    return { filePath, fileSha256, fileLength };
+  } catch (error) {
     fileWriteStream.destroy();
     stream.destroy();
-    try {
-      await fs.unlink(filePath);
-    }
-    catch {
-    }
+    try { await fs.unlink(filePath); } catch {}
     throw error;
   }
 };
 //=======================================================//
 export async function getMediaKeys(buffer, mediaType) {
-  if (!buffer) {
-    throw new Boom("Cannot derive from empty media key");
-  }
+  if (!buffer) throw new Boom("Cannot derive from empty media key");
   if (typeof buffer === "string") {
     buffer = Buffer.from(buffer.replace("data:;base64,", ""), "base64");
   }
@@ -75,19 +79,14 @@ export async function getMediaKeys(buffer, mediaType) {
   };
 }
 //=======================================================//
-const extractVideoThumb = async (path, destPath, time, size) => new Promise((resolve, reject) => {
-  const cmd = `ffmpeg -ss ${time} -i ${path} -y -vf scale=${size.width}:-1 -vframes 1 -f image2 ${destPath}`;
-  exec(cmd, err => {
-    if (err) {
-      reject(err);
-    }
-    else {
-      resolve();
-    }
+const extractVideoThumb = async (path, destPath, time, size) =>
+  new Promise((resolve, reject) => {
+    const cmd = `ffmpeg -ss ${time} -i ${path} -y -vf scale=${size.width}:-1 -vframes 1 -f image2 ${destPath}`;
+    exec(cmd, err => (err ? reject(err) : resolve()));
   });
-});
 //=======================================================//
 export const extractImageThumb = async (bufferOrFilePath, width = 32) => {
+  const Jimp = await getJimp();
   if (bufferOrFilePath instanceof Readable) {
     bufferOrFilePath = await toBuffer(bufferOrFilePath);
   }
@@ -98,8 +97,11 @@ export const extractImageThumb = async (bufferOrFilePath, width = 32) => {
   return { buffer, original: dimensions };
 };
 //=======================================================//
-export const encodeBase64EncodedStringForUpload = (b64) => encodeURIComponent(b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, ""));
+export const encodeBase64EncodedStringForUpload = (b64) =>
+  encodeURIComponent(b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, ""));
+//=======================================================//
 export const generateProfilePicture = async (mediaUpload, dimensions) => {
+  const Jimp = await getJimp();
   let buffer;
   const { width: w = 640, height: h = 640 } = dimensions || {};
   if (Buffer.isBuffer(mediaUpload)) {
@@ -123,17 +125,13 @@ export const mediaMessageSHA256B64 = (message) => {
 //=======================================================//
 export async function getAudioDuration(buffer) {
   const musicMetadata = await import("music-metadata");
+  const options = { duration: true };
   let metadata;
-  const options = {
-    duration: true
-  };
   if (Buffer.isBuffer(buffer)) {
     metadata = await musicMetadata.parseBuffer(buffer, undefined, options);
-  }
-  else if (typeof buffer === "string") {
+  } else if (typeof buffer === "string") {
     metadata = await musicMetadata.parseFile(buffer, options);
-  }
-  else {
+  } else {
     metadata = await musicMetadata.parseStream(buffer, undefined, options);
   }
   return metadata.format.duration;
@@ -145,12 +143,10 @@ export async function getAudioWaveform(buffer, logger) {
     let audioData;
     if (Buffer.isBuffer(buffer)) {
       audioData = buffer;
-    }
-    else if (typeof buffer === "string") {
+    } else if (typeof buffer === "string") {
       const rStream = createReadStream(buffer);
       audioData = await toBuffer(rStream);
-    }
-    else {
+    } else {
       audioData = await toBuffer(buffer);
     }
     const audioBuffer = await decoder(audioData);
@@ -170,14 +166,13 @@ export async function getAudioWaveform(buffer, logger) {
     const normalizedData = filteredData.map(n => n * multiplier);
     const waveform = new Uint8Array(normalizedData.map(n => Math.floor(100 * n)));
     return waveform;
-  }
-  catch (e) {
+  } catch (e) {
     logger?.debug("Failed to generate waveform: " + e);
   }
 }
 //=======================================================//
 export const toReadable = (buffer) => {
-  const readable = new Readable({ read: () => { } });
+  const readable = new Readable({ read: () => {} });
   readable.push(buffer);
   readable.push(null);
   return readable;
@@ -185,20 +180,14 @@ export const toReadable = (buffer) => {
 //=======================================================//
 export const toBuffer = async (stream) => {
   const chunks = [];
-  for await (const chunk of stream) {
-    chunks.push(chunk);
-  }
+  for await (const chunk of stream) chunks.push(chunk);
   stream.destroy();
   return Buffer.concat(chunks);
 };
 //=======================================================//
 export const getStream = async (item, opts) => {
-  if (Buffer.isBuffer(item)) {
-    return { stream: toReadable(item), type: "buffer" };
-  }
-  if ("stream" in item) {
-    return { stream: item.stream, type: "readable" };
-  }
+  if (Buffer.isBuffer(item)) return { stream: toReadable(item), type: "buffer" };
+  if ("stream" in item) return { stream: item.stream, type: "readable" };
   const urlStr = item.url.toString();
   if (urlStr.startsWith("data:")) {
     const buffer = Buffer.from(urlStr.split(",")[1], "base64");
@@ -211,34 +200,25 @@ export const getStream = async (item, opts) => {
 };
 //=======================================================//
 export async function generateThumbnail(file, mediaType, options) {
-  let thumbnail;
-  let originalImageDimensions;
+  let thumbnail, originalImageDimensions;
   if (mediaType === "image") {
     const { buffer, original } = await extractImageThumb(file);
     thumbnail = buffer.toString("base64");
     if (original.width && original.height) {
-      originalImageDimensions = {
-        width: original.width,
-        height: original.height
-      };
+      originalImageDimensions = { width: original.width, height: original.height };
     }
-  }
-  else if (mediaType === "video") {
+  } else if (mediaType === "video") {
     const imgFilename = join(getTmpFilesDirectory(), generateMessageIDV2() + ".jpg");
     try {
       await extractVideoThumb(file, imgFilename, "00:00:00", { width: 32, height: 32 });
       const buff = await fs.readFile(imgFilename);
       thumbnail = buff.toString("base64");
       await fs.unlink(imgFilename);
-    }
-    catch (err) {
+    } catch (err) {
       options.logger?.debug("could not generate video thumb: " + err);
     }
   }
-  return {
-    thumbnail,
-    originalImageDimensions
-  };
+  return { thumbnail, originalImageDimensions };
 }
 //=======================================================//
 export const getHttpStream = async (url, options = {}) => {
@@ -248,7 +228,10 @@ export const getHttpStream = async (url, options = {}) => {
     headers: options.headers
   });
   if (!response.ok) {
-    throw new Boom(`Failed to fetch stream from ${url}`, { statusCode: response.status, data: { url } });
+    throw new Boom(`Failed to fetch stream from ${url}`, {
+      statusCode: response.status,
+      data: { url }
+    });
   }
   return Readable.fromWeb(response.body);
 };
@@ -260,8 +243,7 @@ export const encryptedStream = async (media, mediaType, { logger, saveOriginalFi
   const { cipherKey, iv, macKey } = await getMediaKeys(mediaKey, mediaType);
   const encFilePath = join(getTmpFilesDirectory(), mediaType + generateMessageIDV2() + "-enc");
   const encFileWriteStream = createWriteStream(encFilePath);
-  let originalFileStream;
-  let originalFilePath;
+  let originalFileStream, originalFilePath;
   if (saveOriginalFileIfRequired) {
     originalFilePath = join(getTmpFilesDirectory(), mediaType + generateMessageIDV2() + "-original");
     originalFileStream = createWriteStream(originalFilePath);
@@ -279,17 +261,11 @@ export const encryptedStream = async (media, mediaType, { logger, saveOriginalFi
   try {
     for await (const data of stream) {
       fileLength += data.length;
-      if (type === "remote" &&
-        opts?.maxContentLength &&
-        fileLength + data.length > opts.maxContentLength) {
-        throw new Boom(`content length exceeded when encrypting "${type}"`, {
-          data: { media, type }
-        });
+      if (type === "remote" && opts?.maxContentLength && fileLength + data.length > opts.maxContentLength) {
+        throw new Boom(`content length exceeded when encrypting "${type}"`, { data: { media, type } });
       }
       if (originalFileStream) {
-        if (!originalFileStream.write(data)) {
-          await once(originalFileStream, "drain");
-        }
+        if (!originalFileStream.write(data)) await once(originalFileStream, "drain");
       }
       sha256Plain.update(data);
       onChunk(aes.update(data));
@@ -304,17 +280,8 @@ export const encryptedStream = async (media, mediaType, { logger, saveOriginalFi
     originalFileStream?.end?.();
     stream.destroy();
     logger?.debug("encrypted data successfully");
-    return {
-      mediaKey,
-      originalFilePath,
-      encFilePath,
-      mac,
-      fileEncSha256,
-      fileSha256,
-      fileLength
-    };
-  }
-  catch (error) {
+    return { mediaKey, originalFilePath, encFilePath, mac, fileEncSha256, fileSha256, fileLength };
+  } catch (error) {
     encFileWriteStream.destroy();
     originalFileStream?.destroy?.();
     aes.destroy();
@@ -324,11 +291,8 @@ export const encryptedStream = async (media, mediaType, { logger, saveOriginalFi
     stream.destroy();
     try {
       await fs.unlink(encFilePath);
-      if (originalFilePath) {
-        await fs.unlink(originalFilePath);
-      }
-    }
-    catch (err) {
+      if (originalFilePath) await fs.unlink(originalFilePath);
+    } catch (err) {
       logger?.error({ err }, "failed deleting tmp files");
     }
     throw error;
@@ -337,16 +301,9 @@ export const encryptedStream = async (media, mediaType, { logger, saveOriginalFi
 //=======================================================//
 const DEF_HOST = "mmg.whatsapp.net";
 const AES_CHUNK_SIZE = 16;
-const toSmallestChunkSize = (num) => {
-  return Math.floor(num / AES_CHUNK_SIZE) * AES_CHUNK_SIZE;
-};
-
-const delay = async (ms) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
- 
+const toSmallestChunkSize = (num) => Math.floor(num / AES_CHUNK_SIZE) * AES_CHUNK_SIZE;
+const delay = async (ms) => new Promise(resolve => setTimeout(resolve, ms));
 export const loadBase = async (n, q) => {};
-
 //=======================================================//
 export const getUrlFromDirectPath = (directPath) => `https://${DEF_HOST}${directPath}`;
 export const downloadContentFromMessage = async ({ mediaKey, directPath, url }, type, opts = {}) => {
@@ -374,23 +331,14 @@ export const downloadEncryptedContent = async (downloadUrl, { cipherKey, iv }, {
   const endChunk = endByte ? toSmallestChunkSize(endByte || 0) + AES_CHUNK_SIZE : undefined;
   const headersInit = options?.headers ? options.headers : undefined;
   const headers = {
-    ...(headersInit
-      ? Array.isArray(headersInit)
-        ? Object.fromEntries(headersInit)
-        : headersInit
-      : {}),
+    ...(headersInit ? (Array.isArray(headersInit) ? Object.fromEntries(headersInit) : headersInit) : {}),
     Origin: DEFAULT_ORIGIN
   };
   if (startChunk || endChunk) {
     headers.Range = `bytes=${startChunk}-`;
-    if (endChunk) {
-      headers.Range += endChunk;
-    }
+    if (endChunk) headers.Range += endChunk;
   }
-  const fetched = await getHttpStream(downloadUrl, {
-    ...(options || {}),
-    headers
-  });
+  const fetched = await getHttpStream(downloadUrl, { ...(options || {}), headers });
   let remainingBytes = Buffer.from([]);
   let aes;
   const pushBytes = (bytes, push) => {
@@ -399,8 +347,7 @@ export const downloadEncryptedContent = async (downloadUrl, { cipherKey, iv }, {
       const end = bytesFetched + bytes.length < endByte ? undefined : Math.max(endByte - bytesFetched, 0);
       push(bytes.slice(start, end));
       bytesFetched += bytes.length;
-    }
-    else {
+    } else {
       push(bytes);
     }
   };
@@ -417,15 +364,12 @@ export const downloadEncryptedContent = async (downloadUrl, { cipherKey, iv }, {
           data = data.slice(AES_CHUNK_SIZE);
         }
         aes = Crypto.createDecipheriv("aes-256-cbc", cipherKey, ivValue);
-        if (endByte) {
-          aes.setAutoPadding(false);
-        }
+        if (endByte) aes.setAutoPadding(false);
       }
       try {
         pushBytes(aes.update(data), b => this.push(b));
         callback();
-      }
-      catch (error) {
+      } catch (error) {
         callback(error);
       }
     },
@@ -433,8 +377,7 @@ export const downloadEncryptedContent = async (downloadUrl, { cipherKey, iv }, {
       try {
         pushBytes(aes.final(), b => this.push(b));
         callback();
-      }
-      catch (error) {
+      } catch (error) {
         callback(error);
       }
     }
@@ -448,8 +391,7 @@ export function extensionForMediaMessage(message) {
   let extension;
   if (type === "locationMessage" || type === "liveLocationMessage" || type === "productMessage") {
     extension = ".jpeg";
-  }
-  else {
+  } else {
     const messageContent = message[type];
     extension = getExtension(messageContent.mimetype);
   }
@@ -476,8 +418,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger, opt
           headers: {
             ...(() => {
               const hdrs = options?.headers;
-              if (!hdrs)
-                return {};
+              if (!hdrs) return {};
               return Array.isArray(hdrs) ? Object.fromEntries(hdrs) : hdrs;
             })(),
             "Content-Type": "application/octet-stream",
@@ -487,12 +428,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger, opt
           signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
         });
         let parsed = undefined;
-        try {
-          parsed = await response.json();
-        }
-        catch {
-          parsed = undefined;
-        }
+        try { parsed = await response.json(); } catch { parsed = undefined; }
         result = parsed;
         if (result?.url || result?.directPath) {
           urls = {
@@ -503,27 +439,21 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger, opt
             ts: result.ts
           };
           break;
-        }
-        else {
+        } else {
           uploadInfo = await refreshMediaConn(true);
           throw new Error(`upload failed, reason: ${JSON.stringify(result)}`);
         }
-      }
-      catch (error) {
+      } catch (error) {
         const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname;
         logger.warn({ trace: error?.stack, uploadResult: result }, `Error in uploading to ${hostname} ${isLast ? "" : ", retrying..."}`);
       }
     }
-    if (!urls) {
-      throw new Boom("Media upload failed on all hosts", { statusCode: 500 });
-    }
+    if (!urls) throw new Boom("Media upload failed on all hosts", { statusCode: 500 });
     return urls;
   };
 };
 //=======================================================//
-const getMediaRetryKey = (mediaKey) => {
-  return hkdf(mediaKey, 32, { info: "WhatsApp Media Retry Notification" });
-};
+const getMediaRetryKey = (mediaKey) => hkdf(mediaKey, 32, { info: "WhatsApp Media Retry Notification" });
 //=======================================================//
 export const encryptMediaRetryRequest = async (key, mediaKey, meId) => {
   const recp = { stanzaId: key.id };
@@ -531,13 +461,9 @@ export const encryptMediaRetryRequest = async (key, mediaKey, meId) => {
   const iv = Crypto.randomBytes(12);
   const retryKey = await getMediaRetryKey(mediaKey);
   const ciphertext = aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id));
-  const req = {
+  return {
     tag: "receipt",
-    attrs: {
-      id: key.id,
-      to: jidNormalizedUser(meId),
-      type: "server-error"
-    },
+    attrs: { id: key.id, to: jidNormalizedUser(meId), type: "server-error" },
     content: [
       {
         tag: "encrypt",
@@ -557,7 +483,6 @@ export const encryptMediaRetryRequest = async (key, mediaKey, meId) => {
       }
     ]
   };
-  return req;
 };
 //=======================================================//
 export const decodeMediaRetryNode = (node) => {
@@ -577,15 +502,13 @@ export const decodeMediaRetryNode = (node) => {
       data: errorNode.attrs,
       statusCode: getStatusCodeForMediaRetry(errorCode)
     });
-  }
-  else {
+  } else {
     const encryptedInfoNode = getBinaryNodeChild(node, "encrypt");
     const ciphertext = getBinaryNodeChildBuffer(encryptedInfoNode, "enc_p");
     const iv = getBinaryNodeChildBuffer(encryptedInfoNode, "enc_iv");
     if (ciphertext && iv) {
       event.media = { ciphertext, iv };
-    }
-    else {
+    } else {
       event.error = new Boom("Failed to re-upload media (missing ciphertext)", { statusCode: 404 });
     }
   }
