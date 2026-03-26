@@ -17,7 +17,7 @@ export const getUrlInfo = async (text, opts = {
   try {
     const retries = 0;
     const maxRetry = 5;
-    const { getLinkPreview } = await import("linkPreview-js");
+    const { getLinkPreview } = await import("link-preview-js");
     let previewLink = text;
     if (!text.startsWith("https://") && !text.startsWith("http://")) {
       previewLink = "https://" + previewLink;
