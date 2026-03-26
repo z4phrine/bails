@@ -1,110 +1,73 @@
 {
   "name": "@z4phcode/z4ph.core",
-  "version": "1.5.0",
-  "description": "z4ph.core — Modified Baileys WhatsApp Web Engine · 2025",
-  "keywords": [
-    "whatsapp",
-    "websocket",
-    "api",
-    "nodejs",
-    "baileys",
-    "wabot",
-    "proto",
-    "whatsapp-websocket"
-  ],
+  "version": "1.5.1",
+  "description": "z4ph.core — Modified Baileys WhatsApp Web Engine · 2025 (Fixed: ESM + CJS compatible)",
+  "keywords": ["whatsapp","websocket","api","nodejs","baileys","wabot","proto","whatsapp-websocket"],
   "homepage": "https://github.com/bianoffc/z4ph.core",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/bianoffc/z4ph.core.git"
-  },
+  "repository": { "type": "git", "url": "git+ssh://git@github.com/bianoffc/z4ph.core.git" },
   "license": "MIT",
   "author": "bianoffc",
-  "main": "./src/index.js",
-  "files": [
-    "src/*",
-    "proto/*"
-  ],
+  "main": "./index.cjs",
+  "module": "./src/index.js",
+  "type": "module",
+  "files": ["src/*","proto/*","index.cjs","index.js"],
   "scripts": {
-    "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
-    "changelog:preview": "conventional-changelog -p angular -u",
-    "changelog:last": "conventional-changelog -p angular -r 2",
-    "gen:protobuf": "sh WAProto/GenerateStatics.sh",
     "example": "node --inspect Example/example.js",
     "lint": "eslint src --ext .js",
-    "lint:fix": "yarn lint --fix",
-    "release": "release-it",
     "test": "jest"
   },
   "dependencies": {
-    "@whiskeysockets/eslint-config": "github:whiskeysockets/eslint-config",
     "@cacheable/node-cache": "*",
-    "@z4phcode/libsignal": "*",
-    "music-metadata": "*",
-    "cache-manager": "*",
-    "async-mutex": "*",
     "@hapi/boom": "*",
-    "pbjs": "^0.0.14",
-    "protobufjs": "*",
-    "lru-cache": "*",
-    "p-queue": "*",
-    "lodash": "*",
+    "@z4phcode/libsignal": "*",
+    "async-mutex": "*",
     "axios": "*",
+    "cache-manager": "*",
+    "chalk": "^5.3.0",
+    "form-data": "^4.0.0",
+    "jimp": "^0.22.12",
+    "lodash": "*",
+    "long": "*",
+    "lru-cache": "*",
+    "music-metadata": "*",
+    "p-queue": "*",
+    "pbjs": "^0.0.14",
     "pino": "*",
-    "ws": "*",
-    "long": "*"
+    "pino-pretty": "*",
+    "protobufjs": "*",
+    "ws": "*"
   },
   "devDependencies": {
-    "conventional-changelog-cli": "*",
-    "protobufjs-cli": "*",
-    "cache-manager": "*",
     "@types/jest": "*",
     "@types/node": "*",
-    "release-it": "*",
     "@types/ws": "*",
+    "conventional-changelog-cli": "*",
     "eslint": "*",
     "jest": "*",
-    "json": "*",
-    "open": "*",
-    "link-preview-js": "*"
+    "protobufjs-cli": "*",
+    "release-it": "*"
   },
   "peerDependencies": {
     "audio-decode": "*",
-    "jimp": ">=0.16.0",
     "link-preview-js": "*"
   },
   "peerDependenciesMeta": {
-    "audio-decode": {
-      "optional": true
-    },
-    "chalk": {
-      "optional": true
-    },
-    "jimp": {
-      "optional": true
-    },
-    "link-preview-js": {
-      "optional": true
-    }
+    "audio-decode": { "optional": true },
+    "link-preview-js": { "optional": true }
   },
   "packageManager": "yarn@1.22.19",
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "directories": {
-    "lib": "lib"
-  },
-  "bugs": {
-    "url": "https://github.com/bianoffc/z4ph.core/issues"
-  },
-  "type": "module",
+  "engines": { "node": ">=18.0.0" },
   "exports": {
     ".": {
       "import": "./src/index.js",
+      "require": "./index.cjs",
       "default": "./src/index.js"
     },
     "./proto": {
       "import": "./proto/index.js",
+      "require": "./proto/index.cjs",
       "default": "./proto/index.js"
     }
-  }
+  },
+  "bugs": { "url": "https://github.com/bianoffc/z4ph.core/issues" }
 }
