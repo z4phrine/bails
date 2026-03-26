@@ -2,7 +2,7 @@
   "name": "@z4phrine/bails",
   "version": "1.0.5",
   "private": true,
-  "description": "WhatsApp Web API Library for Node.js \u2014 distributed via GitHub only",
+  "description": "WhatsApp Web API Library for Node.js — distributed via GitHub only",
   "license": "MIT",
   "author": "z4phrine",
   "repository": {
@@ -25,7 +25,7 @@
   "files": [
     "lib/*",
     "WAProto/*",
-    ".github/",
+    ".github/"
   ],
   "scripts": {
     "preinstall": "node ./engine-requirements.js",
